@@ -68,7 +68,7 @@ def train_model(args):
         raise ValueError(f"Unknown optimizer: {args.optimizer}")
         
     # 加入学习率调度器：当连续 2 个 epoch 验证集 loss 不降时，学习率减半
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=2, verbose=True)
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=2)
         
     # 5. 开始训练循环
     print(f"[INFO] Start training for {args.epochs} epochs...")

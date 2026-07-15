@@ -30,7 +30,7 @@ def create_zip():
     with zipfile.ZipFile(LOCAL_ZIP, 'w', zipfile.ZIP_DEFLATED) as zipf:
         for root, dirs, files in os.walk('.'):
             # 排除不需要上传的大目录和隐藏目录
-            if any(exclude in root for exclude in ['.git', '__pycache__', 'venv', '.venv', 'models', 'plots', '.gemini']):
+            if any(exclude in root for exclude in ['.git', '__pycache__', 'venv', '.venv', 'models', 'plots', '.gemini', 'archive', 'non_cats']):
                 continue
             for file in files:
                 # 排除历史打包文件、本地训练好的权重、环境缓存
@@ -47,7 +47,7 @@ def deploy():
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     
     try:
-        ssh.connect(hostname=HOST, port=PORT, username=USER, password=PASSWORD)
+        ssh.connect(hostname=HOST, port=PORT, username=USER, password=PASSWORD, timeout=60, banner_timeout=120, auth_timeout=60)
         print("      -> SSH 连接成功！")
         
         print("\n[3/5] 正在 GPU 上创建工作目录...")
