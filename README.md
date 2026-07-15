@@ -91,3 +91,29 @@ bsaeline model/
 | **迁移学习 ResNet (Person B)** | **100.00% (满分)** | 3 Epochs (CPU) | **完美分类！** 0 误判 |
 
 **结论**：即使在数据量小、训练轮数少、计算资源受限（仅 CPU）的情况下，借助预训练大模型骨干提取特征的**迁移学习 (Transfer Learning)** 依然取得了满分的完美成绩，远远超越了从头训练的简单卷积网络结构。
+
+---
+
+## 🐾 Current 5-Breed Classification Pipeline (Cloud GPU)
+
+*This section outlines the latest training methodology for the 5-category cat breed classification task (Pallas, Ragdoll, Singapura, Persian, Sphynx).*
+
+### 1. Training Methodology & Data Augmentation
+To achieve high accuracy on fine-grained cat breed classification with a limited dataset, we employ **Transfer Learning** using a pretrained backbone (e.g., MobileNetV2 or ResNet50) with its feature extraction layers frozen (`freeze_backbone=True`). A custom 5-class `nn.Linear` head is trained to classify the specific breeds.
+
+The data pipeline incorporates the following augmentations to prevent overfitting:
+- **Resize**: Uniformly scaled to `224x224`.
+- **RandomRotation**: `degrees=15`.
+- **RandomHorizontalFlip**.
+- **ColorJitter**: `brightness=0.2`.
+- **ImageNet Normalization**: `mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]`. (Crucial for unlocking the pretrained backbone's full potential).
+
+The model is trained using **CrossEntropyLoss** and the **Adam Optimizer** (lr=0.001) for 10+ epochs.
+
+### 2. Model Exporting & Deployment
+**Where is the model saved?**
+During training (`src/train.py`), the script automatically monitors the Validation Loss. Whenever the validation loss reaches a new minimum, the model's weights are immediately saved to your local working directory under **`models/best_transfer.pth`**. 
+
+**How to export and use it?**
+1. **Download**: If you trained on a cloud GPU (e.g., JupyterLab), simply right-click the `models/best_transfer.pth` file in the file browser and click **Download** to save it to your local machine.
+2. **Inference**: Once downloaded, you can load this `.pth` weight file into the robotic vehicle's computer. The repository includes an `src/inference_video.py` script, which can load `best_transfer.pth` to perform real-time bounding-box inference and breed classification directly on a live camera feed.
