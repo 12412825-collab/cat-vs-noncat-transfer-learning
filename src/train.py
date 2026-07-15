@@ -45,7 +45,10 @@ def train_model(args):
     if args.model == "baseline":
         model = get_baseline_model()
     elif args.model == "transfer":
-        model = get_transfer_model("mobilenet_v2", freeze_backbone=True)
+        # 如果启用了 fine_tune，则解冻整个骨干网络
+        freeze_bb = not args.fine_tune
+        # 换用更强的 resnet50 或者继续用 mobilenet_v2
+        model = get_transfer_model("resnet50", freeze_backbone=freeze_bb)
     else:
         raise ValueError(f"Unknown model: {args.model}")
         
@@ -63,6 +66,9 @@ def train_model(args):
         optimizer = optim.SGD(trainable_params, lr=args.lr, momentum=0.9)
     else:
         raise ValueError(f"Unknown optimizer: {args.optimizer}")
+        
+    # 加入学习率调度器：当连续 2 个 epoch 验证集 loss 不降时，学习率减半
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=2, verbose=True)
         
     # 5. 开始训练循环
     print(f"[INFO] Start training for {args.epochs} epochs...")
@@ -129,6 +135,9 @@ def train_model(args):
         history["val_loss"].append(epoch_val_loss)
         history["val_acc"].append(epoch_val_acc)
         
+        # 步进调度器
+        scheduler.step(epoch_val_loss)
+        
         # 保存最佳模型权重
         if epoch_val_loss < best_val_loss:
             best_val_loss = epoch_val_loss
@@ -179,9 +188,10 @@ if __name__ == "__main__":
     parser.add_argument("--model", type=str, default="baseline", choices=["baseline", "transfer"], help="Model to train")
     parser.add_argument("--epochs", type=int, default=5, help="Number of training epochs")
     parser.add_argument("--batch_size", type=int, default=32, help="Batch size (keep low for laptops)")
-    parser.add_argument("--lr", type=float, default=0.001, help="Learning rate")
+    parser.add_argument("--lr", type=float, default=0.0001, help="Learning rate")
     parser.add_argument("--optimizer", type=str, default="adam", choices=["adam", "sgd"], help="Optimizer")
     parser.add_argument("--sample_fraction", type=float, default=1.0, help="Fraction of dataset to sample (0.0 to 1.0) for fast CPU run")
+    parser.add_argument("--fine_tune", action="store_true", help="If flag is set, unfreeze the backbone for full fine-tuning")
     
     args = parser.parse_args()
     
