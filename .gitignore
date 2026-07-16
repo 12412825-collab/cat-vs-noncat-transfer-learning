@@ -1,7 +1,7 @@
 # Dataset and Data files
 archive/
 non_cats/
-metadata/*.csv
+
 data/
 
 # Model weights
