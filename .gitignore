@@ -5,8 +5,8 @@ metadata/*.csv
 data/
 
 # Model weights
-models/*.pth
-models/*.pt
+# models/*.pth
+# models/*.pt
 
 # Python caches
 __pycache__/
