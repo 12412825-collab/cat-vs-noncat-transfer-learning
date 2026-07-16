@@ -54,8 +54,26 @@ def main():
             print("[WARNING] 无法读取画面，可能网络中断，尝试重连...")
             continue
             
+        # --- Image Enhancement for Screen/Paper Re-capture ---
+        # 1. Convert to LAB color space to apply CLAHE to the L channel
+        lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
+        l_channel, a_channel, b_channel = cv2.split(lab)
+        
+        # Apply CLAHE
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        cl = clahe.apply(l_channel)
+        
+        # Merge back and convert to BGR
+        limg = cv2.merge((cl, a_channel, b_channel))
+        enhanced_bgr = cv2.cvtColor(limg, cv2.COLOR_LAB2BGR)
+        
+        # 2. Sharpening (Unsharp Masking) to combat Moiré/blur
+        gaussian = cv2.GaussianBlur(enhanced_bgr, (0, 0), 2.0)
+        enhanced_bgr = cv2.addWeighted(enhanced_bgr, 1.5, gaussian, -0.5, 0)
+        # -----------------------------------------------------
+
         # 画面从 BGR 转换到 RGB 供 PIL 处理
-        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        rgb_frame = cv2.cvtColor(enhanced_bgr, cv2.COLOR_BGR2RGB)
         pil_img = Image.fromarray(rgb_frame)
         
         # 预处理
@@ -77,10 +95,9 @@ def main():
         # 如果置信度低于 50%，我们可能认为没看清或者不是猫
         color = (0, 255, 0) if conf_percent > 50 else (0, 0, 255)
         
-        cv2.putText(frame, label_text, (10, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2, cv2.LINE_AA)
-        
-        # 显示结果
-        cv2.imshow("Mission Control - Great Cat Census", frame)
+        # 显示结果 (这里我们显示增强后的画面，让用户也能看到“火眼金睛”的效果)
+        cv2.putText(enhanced_bgr, label_text, (10, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2, cv2.LINE_AA)
+        cv2.imshow("Mission Control - Great Cat Census (Enhanced)", enhanced_bgr)
         
         # 按 'q' 退出
         if cv2.waitKey(1) & 0xFF == ord('q'):

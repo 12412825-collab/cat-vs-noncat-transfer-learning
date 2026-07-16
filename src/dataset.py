@@ -46,10 +46,10 @@ def get_transforms(is_train=True):
     if is_train:
         return transforms.Compose([
             transforms.Resize((224, 224)),
-            transforms.RandomRotation(degrees=15),
-            transforms.RandomHorizontalFlip(),
-            # 亮度微调 (brightness=0.2 相当于在 [0.8, 1.2] 之间随机调整)
-            transforms.ColorJitter(brightness=0.2),
+            transforms.RandomAffine(degrees=30, translate=(0.2, 0.2), scale=(0.8, 1.2), shear=10),
+            transforms.RandomHorizontalFlip(p=0.5),
+            transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4, hue=0.1),
+            transforms.RandomPerspective(distortion_scale=0.2, p=0.3),
             transforms.ToTensor(),  # ToTensor 会自动把像素归一化到 [0.0, 1.0]
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
         ])

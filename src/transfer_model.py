@@ -27,6 +27,23 @@ def get_transfer_model(model_name="mobilenet_v2", freeze_backbone=True):
         in_features = model.classifier[1].in_features
         model.classifier[1] = nn.Linear(in_features, 5)
         
+    elif model_name == "convnext_tiny":
+        # 加载 ConvNeXt-Tiny
+        try:
+            from torchvision.models import ConvNeXt_Tiny_Weights
+            model = models.convnext_tiny(weights=ConvNeXt_Tiny_Weights.DEFAULT)
+        except ImportError:
+            model = models.convnext_tiny(pretrained=True)
+            
+        if freeze_backbone:
+            for param in model.parameters():
+                param.requires_grad = False
+                
+        # ConvNeXt 的最后一层是 classifier (包含 LayerNorm 和 Linear)
+        # 替换最后一层 Linear
+        in_features = model.classifier[2].in_features
+        model.classifier[2] = nn.Linear(in_features, 5)
+        
     elif model_name == "resnet50":
         # 加载 ResNet50
         try:
@@ -48,7 +65,7 @@ def get_transfer_model(model_name="mobilenet_v2", freeze_backbone=True):
         )
         
     else:
-        raise ValueError(f"Unknown model name: {model_name}. Choose 'mobilenet_v2' or 'resnet50'.")
+        raise ValueError(f"Unknown model name: {model_name}. Choose 'mobilenet_v2', 'resnet50', or 'convnext_tiny'.")
         
     return model
 
