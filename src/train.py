@@ -3,8 +3,10 @@ import argparse
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, WeightedRandomSampler
 import matplotlib.pyplot as plt
+import numpy as np
+from torchvision.transforms import v2
 
 # 导入自定义的数据集与模型
 from dataset import CatNonCatDataset, get_transforms
@@ -34,7 +36,15 @@ def train_model(args):
         sample_fraction=args.sample_fraction
     )
     
-    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=0)
+    # 统计类别频率并配置 WeightedRandomSampler 解决长尾分布
+    targets = train_dataset.df["label"].values
+    class_sample_count = np.array([len(np.where(targets == t)[0]) for t in range(5)])
+    weight = 1. / (class_sample_count + 1e-6)
+    samples_weight = np.array([weight[t] for t in targets])
+    samples_weight = torch.from_numpy(samples_weight).double()
+    sampler = WeightedRandomSampler(samples_weight, len(samples_weight), replacement=True)
+    
+    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, sampler=sampler, num_workers=0)
     val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=0)
     
     print(f"[INFO] Train samples size: {len(train_dataset)} | Validation samples size: {len(val_dataset)}")
@@ -72,6 +82,12 @@ def train_model(args):
         
     # 5. 开始训练循环
     print(f"[INFO] Start training for {args.epochs} epochs...")
+    
+    # 定义 CutMix 和 MixUp 数据增强 (在 Batch 层面)
+    cutmix = v2.CutMix(alpha=1.0, num_classes=5)
+    mixup = v2.MixUp(alpha=0.2, num_classes=5)
+    cutmix_or_mixup = v2.RandomChoice([cutmix, mixup])
+    
     history = {
         "train_loss": [], "train_acc": [],
         "val_loss": [], "val_acc": []
@@ -88,6 +104,9 @@ def train_model(args):
         for batch_idx, (images, labels) in enumerate(train_loader):
             images, labels = images.to(device), labels.to(device)
             
+            # 引入 Mixup/Cutmix (将 Hard label 转为 Soft label)
+            images, labels = cutmix_or_mixup(images, labels)
+            
             optimizer.zero_grad()
             outputs = model(images)
             loss = criterion(outputs, labels)
@@ -97,7 +116,8 @@ def train_model(args):
             running_loss += loss.item() * images.size(0)
             _, predicted = outputs.max(1)
             total += labels.size(0)
-            correct += predicted.eq(labels).sum().item()
+            # 因为标签变为了软标签，准确率匹配时取 labels 的最大值索引
+            correct += predicted.eq(labels.argmax(dim=1)).sum().item()
             
             if (batch_idx + 1) % 10 == 0 or (batch_idx + 1) == len(train_loader):
                 acc = 100. * correct / total
