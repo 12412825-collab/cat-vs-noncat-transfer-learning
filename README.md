@@ -117,3 +117,38 @@ During training (`src/train.py`), the script automatically monitors the Validati
 **How to export and use it?**
 1. **Download**: If you trained on a cloud GPU (e.g., JupyterLab), simply right-click the `models/best_transfer.pth` file in the file browser and click **Download** to save it to your local machine.
 2. **Inference**: Once downloaded, you can load this `.pth` weight file into the robotic vehicle's computer. The repository includes an `src/inference_video.py` script, which can load `best_transfer.pth` to perform real-time bounding-box inference and breed classification directly on a live camera feed.
+
+---
+
+## 🚀 Raspberry Pi (Cat Hunter) Deployment Guide
+
+If you have trained a new model and uploaded it to GitHub via Git LFS, you can deploy it to the Raspberry Pi using the following steps:
+
+### 1. SSH into the Raspberry Pi
+Use your terminal (PowerShell, CMD, or Terminal) to connect:
+```bash
+ssh lyq@100.98.36.52
+```
+* **Username**: `lyq`
+* **Password**: `Happyto001`
+
+### 2. Update and Restart the Service
+Once logged in, run the following commands sequentially to pull the latest 94MB `.pth` model and restart the web controller in the background:
+
+```bash
+# 1. Stop the currently running web controller
+pkill -f web_control.py || true
+
+# 2. Navigate to the project directory and pull the latest model
+cd ~/Desktop/'Python Code'/Cat_Hunter
+git pull
+
+# 3. Activate the virtual environment and restart the web controller in the background
+source ~/Desktop/'Python Code'/venv/bin/activate
+nohup python3 hardware_control/web_control.py > web_control.log 2>&1 &
+
+# 4. Verify it's running smoothly (Press Ctrl+C to exit log view)
+tail -f web_control.log
+```
+
+*(Note: The model is 94MB, so `git pull` might take a few seconds depending on the Pi's internet connection).*
